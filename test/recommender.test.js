@@ -149,6 +149,10 @@ test('scanner recognizes canonical CodeBuddy and WorkBuddy global project stores
   await put(join(codebuddy, 'projects', 'encoded-codebuddy-project', 'session', 'subagents', 'agent.jsonl'), JSON.stringify({
     type: 'message', content: syntheticPrompt,
   }))
+  await put(join(codebuddy, 'projects', 'encoded-codebuddy-project', 'session', 'workflows', 'run.jsonl'), JSON.stringify({
+    type: 'function_call', name: 'WebSearch', arguments: syntheticSecret,
+  }))
+  await put(join(codebuddy, 'workflows', 'private-workflow.js'), `const prompt = ${JSON.stringify(syntheticPrompt)}\nawait agent(prompt)`)
   await put(join(codebuddy, 'sessions', '12345.json'), JSON.stringify({
     sessionId: 'stale-map', cwd: '/sensitive/path', content: syntheticSecret,
   }))
@@ -160,10 +164,11 @@ test('scanner recognizes canonical CodeBuddy and WorkBuddy global project stores
   const report = await scanProjects(config(root, { workbuddyRoots: [codebuddy, workbuddy] }), { sources: ['workbuddy'] })
   const source = report.sources[0]
   assert.equal(source.sessionCount, 3)
-  assert.equal(source.workflowCount, 1)
+  assert.equal(source.workflowCount, 2)
   assert.equal(source.toolCounts.shell, 1)
   assert.equal(source.toolCounts.files, 1)
-  assert.equal(source.projectCount, 3)
+  assert.equal(source.toolCounts.web, 0)
+  assert.equal(source.projectCount, 4)
   assert.equal(JSON.stringify(report).includes(syntheticSecret), false)
   assert.equal(JSON.stringify(report).includes(syntheticPrompt), false)
 })

@@ -67,11 +67,11 @@ If `DSH_HOME` is unset, `~/.dsh` is used. The directory also holds a private ran
 | Claude Code | `$CLAUDE_CONFIG_DIR/projects` or `~/.claude/projects` | Bounded `.jsonl`/`.json`; selected project and `tool_use` name fields; workflow sidecars, journals, task/session/plan stores, and global history are excluded |
 | Claude personal workflows | `$CLAUDE_CONFIG_DIR/workflows` or `~/.claude/workflows` | `.js` file presence and day only; scripts are never opened. Add project-local `<repo>/.claude/workflows` explicitly to `claudeWorkflowRoots` if desired |
 | Claude transcripts | Disabled | Scanned only when `claudeTranscriptRoots` is explicitly configured |
-| CodeBuddy CLI | `$CODEBUDDY_CONFIG_DIR/projects` or `~/.codebuddy/projects` | Bounded canonical project `.jsonl` records; ignores stale global process maps and tool-result/blob directories |
-| WorkBuddy | `$WORKBUDDY_CONFIG_DIR/projects` or `~/.workbuddy/projects`, `~/.workbuddy-ai/projects` | Bounded project `.jsonl` records; project-local `.workbuddy` metadata is inventory-only |
-| Project-local CodeBuddy/WorkBuddy metadata | `<project>/.codebuddy` or `<project>/.workbuddy` `memory`, `workflows`, `plans`, or `automations` | Count and day only; content is not read; memory never becomes workflow evidence |
+| CodeBuddy CLI | `$CODEBUDDY_CONFIG_DIR/projects` or `~/.codebuddy/projects` | Bounded canonical project `.jsonl` records; `~/.codebuddy/workflows/*.js` and project-local workflow scripts are inventoried by presence only. Process maps, tool-result/blob directories, and workflow runtime sidecars are excluded |
+| WorkBuddy | `$WORKBUDDY_CONFIG_DIR/projects` or `~/.workbuddy/projects`, `~/.workbuddy-ai/projects` | Heuristic, version-sensitive project `.jsonl` inventory; native session layout is not vendor-contracted, so it is never treated as proof of CodeBuddy session equivalence |
+| Project-local CodeBuddy/WorkBuddy metadata | `<project>/.codebuddy` or `<project>/.workbuddy` `memory`, `workflows`, `plans`, or `automations` | Count and day only, including workflow `.js`; content is not read; memory never becomes workflow evidence |
 
-Formats vary between product releases. Unknown fields are ignored, malformed records are skipped, and malformed files are counted as errors without stopping the scan.
+Formats vary between product releases. CodeBuddy paths/workflow scripts are documented; WorkBuddy session-file detection is an observed heuristic. Unknown fields are ignored, malformed records are skipped, and malformed files are counted as errors without stopping the scan.
 
 ## Configuration
 
@@ -140,7 +140,7 @@ Both tools return bounded readable text strings.
 - Keyed IDs are stable only while the private state directory remains available; deleting `identity.key` intentionally creates a new identifier set.
 - A recommendation reflects observed local frequency, not task quality or organizational policy.
 - The plugin does not verify that optional products or capabilities are installed or authenticated.
-- JSONL data after the byte cap, oversized JSON files, old files, and older files beyond a source limit are intentionally omitted. Compressed Codex `.jsonl.zst` rollouts are not read in 0.1.2. Claude workflow scripts and dynamic workflow sidecars are deliberately not parsed.
+- JSONL data after the byte cap, oversized JSON files, old files, and older files beyond a source limit are intentionally omitted. Compressed Codex `.jsonl.zst` rollouts are not read in 0.1.3. Claude workflow scripts and dynamic workflow sidecars are deliberately not parsed.
 
 ## Development
 

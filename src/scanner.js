@@ -13,8 +13,9 @@ const SKIP_DIRECTORIES = new Set([
 const WORKBUDDY_MEMORY_AREAS = new Set(['memory'])
 const WORKBUDDY_WORKFLOW_AREAS = new Set(['workflows', 'plans', 'automations'])
 const WORKBUDDY_SESSION_AREAS = new Set(['sessions', 'history', 'tasks'])
-const WORKBUDDY_METADATA_EXTENSIONS = new Set(['.md', '.json', '.jsonl', '.yaml', '.yml', '.toml'])
+const WORKBUDDY_METADATA_EXTENSIONS = new Set(['.md', '.json', '.jsonl', '.yaml', '.yml', '.toml', '.js'])
 const RECORD_EXTENSIONS = new Set(['.json', '.jsonl'])
+const SENSITIVE_WORKFLOW_RUNTIME_AREAS = new Set(['workflows', 'workflow', 'journal', 'journals', 'results', 'runtime'])
 const CLAUDE_EXCLUDED_DIRECTORIES = new Set([
   'workflows', 'tool-results', 'file-history', 'tasks', 'sessions', 'plans', 'teams', 'blobs',
 ])
@@ -149,6 +150,11 @@ function classifyFile(filePath, source, root) {
   const canonicalLocation = globalStore ? location : configuredLocation
 
   // Canonical CodeBuddy/WorkBuddy transcripts are under <config>/projects/<project>/<session>.jsonl.
+  // Workflow runtime sidecars can contain scripts, arguments, journal entries, and result previews.
+  const canonicalTail = canonicalLocation?.area === 'projects'
+    ? canonicalLocation.segments.slice(2).map((segment) => segment.toLowerCase())
+    : []
+  if (canonicalTail.some((segment) => SENSITIVE_WORKFLOW_RUNTIME_AREAS.has(segment))) return null
   if (canonicalLocation?.area === 'projects' && canonicalLocation.segments.length >= 3
     && RECORD_EXTENSIONS.has(extension)) {
     return {
@@ -162,7 +168,7 @@ function classifyFile(filePath, source, root) {
 
   const metadataLocation = location || configuredLocation
   if (!metadataLocation) return null
-  const projectPath = location ? location.rootPath : metadataLocation.storePath
+  const projectPath = globalStore ? location.storePath : location ? location.rootPath : metadataLocation.storePath
   if (WORKBUDDY_MEMORY_AREAS.has(metadataLocation.area) && WORKBUDDY_METADATA_EXTENSIONS.has(extension)) {
     return { kind: 'metadata', projectPath }
   }
