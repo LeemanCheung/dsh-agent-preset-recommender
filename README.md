@@ -142,7 +142,7 @@ Both tools return bounded readable text strings.
 - Keyed IDs are stable only while the private state directory remains available; deleting `identity.key` intentionally creates a new identifier set.
 - A recommendation reflects observed local frequency, not task quality or organizational policy.
 - The plugin does not verify that optional products or capabilities are installed or authenticated.
-- JSONL files above the byte cap are prefix-sampled within the byte/record bounds; their remaining data, oversized JSON files, old files, and older files beyond a source limit are intentionally omitted. Compressed Codex `.jsonl.zst` rollouts are not read in 0.1.5. Claude workflow scripts and dynamic workflow sidecars are deliberately not parsed.
+- JSONL files above the byte cap are prefix-sampled within the byte/record bounds; their remaining data, oversized JSON files, old files, and older files beyond a source limit are intentionally omitted. Compressed Codex `.jsonl.zst` rollouts are not read in 0.1.6. Claude workflow scripts and dynamic workflow sidecars are deliberately not parsed.
 
 ## Development
 

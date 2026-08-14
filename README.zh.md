@@ -142,7 +142,7 @@ DSH 启动时默认会读取 `CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`CODEBUDDY_CON
 - 私有状态目录存在时，同一来源/路径的密钥派生 ID 保持稳定；删除 `identity.key` 会主动生成一组新的 ID。
 - 推荐反映本地使用频率，不代表任务质量或组织策略。
 - 插件不会验证可选产品/能力是否已安装或已认证。
-- 超过字节上限的 JSONL 会在字节/记录边界内以前缀方式采样；其余后续数据、过大的 JSON 文件、过旧文件，以及超出每来源数量限制的较旧文件会主动忽略。0.1.5 不读取压缩的 Codex `.jsonl.zst` rollout；Claude workflow 脚本与动态 workflow sidecar 也会有意跳过。
+- 超过字节上限的 JSONL 会在字节/记录边界内以前缀方式采样；其余后续数据、过大的 JSON 文件、过旧文件，以及超出每来源数量限制的较旧文件会主动忽略。0.1.6 不读取压缩的 Codex `.jsonl.zst` rollout；Claude workflow 脚本与动态 workflow sidecar 也会有意跳过。
 
 ## 开发
 

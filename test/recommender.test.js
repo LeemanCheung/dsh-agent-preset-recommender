@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, rm, utimes, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -377,6 +377,33 @@ test('background scheduling coalesces ticks while a scan is active', async () =>
   await first
   await backgroundScan()
   assert.equal(calls, 2)
+})
+
+test('abortable scan callers reject promptly without waiting for queued work', async () => {
+  const controller = new AbortController()
+  let release
+  const blocked = new Promise((resolve) => { release = resolve })
+  const pending = internals.abortable(blocked, controller.signal)
+  controller.abort(new DOMException('cancelled', 'AbortError'))
+  await assert.rejects(pending, { name: 'AbortError' })
+  release()
+  await blocked
+})
+
+test('same-turn disposal prevents a queued startup scan from starting', async (t) => {
+  const root = await sandbox(t)
+  const registered = []
+  const effects = []
+  const ctx = {
+    tools: { register(tool) { registered.push(tool); return () => {} } },
+    effect(factory) { const dispose = factory(); effects.push(dispose); return dispose },
+  }
+  const stateDirectory = join(root, 'state')
+  apply(ctx, config(root, { scanOnStart: true, stateDirectory }))
+  await effects[0]()
+  await Promise.resolve()
+  await assert.rejects(stat(join(stateDirectory, 'identity.key')), { code: 'ENOENT' })
+  assert.equal(registered.length, 2)
 })
 
 test('report store creates one private identity key for keyed project IDs', async (t) => {

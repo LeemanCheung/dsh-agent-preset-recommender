@@ -60,16 +60,26 @@ function safeDiagnostic(error) {
   return 'failed'
 }
 
-function makeBackgroundRunner(runScan, logger) {
+function makeBackgroundRunner(runScan, logger, canRun = () => true) {
   let queued = false
   return () => {
-    if (queued) return
+    if (!canRun() || queued) return
     queued = true
     const task = Promise.resolve().then(() => runScan()).catch((error) => {
       if (!isAbortError(error)) logger?.warn?.('scan failed: %s', safeDiagnostic(error))
     }).finally(() => { queued = false })
     return task
   }
+}
+
+function abortable(promise, signal) {
+  if (!signal) return promise
+  if (signal.aborted) return Promise.reject(signal.reason ?? new DOMException('The operation was aborted', 'AbortError'))
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(signal.reason ?? new DOMException('The operation was aborted', 'AbortError'))
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort))
+  })
 }
 
 function makeScanTool(runScan) {
@@ -141,9 +151,10 @@ export function apply(ctx, config) {
   }
 
   function runScan(sources, externalSignal) {
+    const signal = combineSignals(lifecycle.signal, externalSignal)
+    if (signal?.aborted) return Promise.reject(signal.reason ?? new DOMException('The operation was aborted', 'AbortError'))
     const selected = sources?.length ? [...new Set(sources)] : [...SOURCE_NAMES]
     const task = async () => {
-      const signal = combineSignals(lifecycle.signal, externalSignal)
       throwIfAborted(signal)
       const previous = await getReport()
       throwIfAborted(signal)
@@ -162,7 +173,7 @@ export function apply(ctx, config) {
     }
     const result = active.then(task, task)
     active = result.catch(() => {})
-    return result
+    return abortable(result, signal)
   }
 
   ctx.tools.register(makeScanTool(runScan))
@@ -170,7 +181,7 @@ export function apply(ctx, config) {
 
   ctx.effect(() => {
     let timer = null
-    const backgroundScan = makeBackgroundRunner(runScan, logger)
+    const backgroundScan = makeBackgroundRunner(runScan, logger, () => !lifecycle.signal.aborted)
     if (config.scanOnStart) queueMicrotask(backgroundScan)
     if (config.intervalMinutes > 0) {
       timer = setInterval(backgroundScan, config.intervalMinutes * 60_000)
@@ -185,5 +196,5 @@ export function apply(ctx, config) {
 }
 
 export const internals = {
-  makeScanTool, makeGetTool, makeBackgroundRunner, stateDirectory, scanSourcesFromInput, projectIdFromInput, safeDiagnostic,
+  makeScanTool, makeGetTool, makeBackgroundRunner, abortable, stateDirectory, scanSourcesFromInput, projectIdFromInput, safeDiagnostic,
 }
