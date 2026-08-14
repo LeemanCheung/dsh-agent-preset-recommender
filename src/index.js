@@ -22,6 +22,7 @@ export const Config = z.object({
   codexRoots: stringList(DEFAULTS.codexRoots),
   claudeRoots: stringList(DEFAULTS.claudeRoots),
   claudeTranscriptRoots: stringList(DEFAULTS.claudeTranscriptRoots),
+  claudeWorkflowRoots: stringList(DEFAULTS.claudeWorkflowRoots),
   workbuddyRoots: stringList(DEFAULTS.workbuddyRoots),
 })
 

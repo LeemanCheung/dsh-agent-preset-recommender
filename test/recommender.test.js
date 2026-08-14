@@ -28,6 +28,7 @@ function config(root, overrides = {}) {
     codexRoots: [join(root, 'codex')],
     claudeRoots: [join(root, 'claude')],
     claudeTranscriptRoots: [],
+    claudeWorkflowRoots: [],
     workbuddyRoots: [join(root, 'workbuddy')],
     homeDirectory: root,
     identityKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
@@ -109,6 +110,33 @@ test('scanner handles Codex, Claude, WorkBuddy workflows and strips private cont
   assert.equal(serialized.includes(syntheticPrompt), false)
   assert.equal(serialized.includes('/synthetic/'), false)
   assert.equal(report.privacy.contentRetention, false)
+})
+
+test('scanner inventories Claude workflows without reading workflow sidecars or scripts', async (t) => {
+  const root = await sandbox(t)
+  const projects = join(root, 'claude-projects')
+  const workflowRoot = join(root, '.claude', 'workflows')
+  await put(join(projects, 'project-key', 'session.jsonl'), JSON.stringify({
+    cwd: '/synthetic/claude-project', message: { content: [{ type: 'tool_use', name: 'Read' }] },
+  }))
+  await put(join(projects, 'project-key', 'session-id', 'workflows', 'run.jsonl'), JSON.stringify({
+    type: 'tool_use', name: 'WebSearch', content: syntheticSecret,
+  }))
+  await put(join(workflowRoot, 'private-workflow.js'), `const prompt = ${JSON.stringify(syntheticPrompt)}\nawait agent(prompt)`)
+  await put(join(root, '.claude', 'history.jsonl'), JSON.stringify({ display: syntheticSecret }))
+
+  const report = await scanProjects(config(root, {
+    claudeRoots: [projects],
+    claudeWorkflowRoots: [workflowRoot],
+    claudeTranscriptRoots: [join(root, '.claude')],
+  }), { sources: ['claude'] })
+  const source = report.sources[0]
+  assert.equal(source.sessionCount, 1)
+  assert.equal(source.workflowCount, 1)
+  assert.equal(source.toolCounts.files, 1)
+  assert.equal(source.toolCounts.web, 0)
+  assert.equal(JSON.stringify(report).includes(syntheticSecret), false)
+  assert.equal(JSON.stringify(report).includes(syntheticPrompt), false)
 })
 
 test('scanner recognizes canonical CodeBuddy and WorkBuddy global project stores', async (t) => {

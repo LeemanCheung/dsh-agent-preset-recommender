@@ -15,10 +15,17 @@ const WORKBUDDY_WORKFLOW_AREAS = new Set(['workflows', 'plans', 'automations'])
 const WORKBUDDY_SESSION_AREAS = new Set(['sessions', 'history', 'tasks'])
 const WORKBUDDY_METADATA_EXTENSIONS = new Set(['.md', '.json', '.jsonl', '.yaml', '.yml', '.toml'])
 const RECORD_EXTENSIONS = new Set(['.json', '.jsonl'])
+const CLAUDE_EXCLUDED_DIRECTORIES = new Set([
+  'workflows', 'tool-results', 'file-history', 'tasks', 'sessions', 'plans', 'teams', 'blobs',
+])
 
 function rootsFor(source, config) {
   if (source === 'codex') return config.codexRoots
-  if (source === 'claude') return [...config.claudeRoots, ...config.claudeTranscriptRoots]
+  if (source === 'claude') return [
+    ...(config.claudeRoots || []),
+    ...(config.claudeTranscriptRoots || []),
+    ...(config.claudeWorkflowRoots || []),
+  ]
   return config.workbuddyRoots
 }
 
@@ -127,6 +134,12 @@ function configuredRootLocation(filePath, root) {
 function classifyFile(filePath, source, root) {
   const extension = extname(filePath).toLowerCase()
   if (source !== 'workbuddy') {
+    const normalizedFile = normalizedPath(filePath).toLowerCase()
+    const normalizedRoot = normalizedPath(root).replace(/\/$/, '').toLowerCase()
+    if (source === 'claude' && normalizedFile.endsWith('/.claude/history.jsonl')) return null
+    if (source === 'claude' && extension === '.js' && normalizedRoot.endsWith('/workflows')) {
+      return { kind: 'workflow', projectPath: dirname(root) }
+    }
     return RECORD_EXTENSIONS.has(extension) ? { kind: 'session', projectPath: null } : null
   }
 
@@ -205,7 +218,9 @@ async function collectFiles(root, source, config, state, signal) {
       throwIfAborted(signal)
       const path = join(directory, entry.name)
       if (entry.isDirectory()) {
-        if (!SKIP_DIRECTORIES.has(entry.name.toLowerCase())) pending.push(path)
+        const directoryName = entry.name.toLowerCase()
+        if (!SKIP_DIRECTORIES.has(directoryName)
+          && !(source === 'claude' && CLAUDE_EXCLUDED_DIRECTORIES.has(directoryName))) pending.push(path)
         continue
       }
       if (!entry.isFile()) continue

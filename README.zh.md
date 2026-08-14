@@ -64,7 +64,8 @@ $DSH_HOME/state/agent-preset-recommender/report.json
 | 来源 | 默认位置 | 读取方式 |
 | --- | --- | --- |
 | Codex | `$CODEX_HOME/sessions`、`$CODEX_HOME/archived_sessions`，或 `~/.codex/*` | 有界 `.jsonl`/`.json`；只读 session/project 与工具名称字段 |
-| Claude Code | `$CLAUDE_CONFIG_DIR/projects` 或 `~/.claude/projects` | 有界 `.jsonl`/`.json`；只读 project 与 `tool_use` 名称字段 |
+| Claude Code | `$CLAUDE_CONFIG_DIR/projects` 或 `~/.claude/projects` | 有界 `.jsonl`/`.json`；只读 project 与 `tool_use` 名称字段；排除 workflow sidecar、journal、task/session/plan 存储与全局 history |
+| Claude 个人工作流 | `$CLAUDE_CONFIG_DIR/workflows` 或 `~/.claude/workflows` | 仅记录 `.js` 文件存在与日期，绝不打开脚本；如需项目内 `<repo>/.claude/workflows`，显式加入 `claudeWorkflowRoots` |
 | Claude transcripts | 默认关闭 | 仅显式配置 `claudeTranscriptRoots` 后扫描 |
 | CodeBuddy CLI | `$CODEBUDDY_CONFIG_DIR/projects` 或 `~/.codebuddy/projects` | 读取有界、规范项目 `.jsonl` 记录；跳过易过期的全局进程映射及 tool-result/blob 目录 |
 | WorkBuddy | `$WORKBUDDY_CONFIG_DIR/projects` 或 `~/.workbuddy/projects`、`~/.workbuddy-ai/projects` | 读取有界项目 `.jsonl` 记录；项目内 `.workbuddy` 元数据只做清单 |
@@ -91,6 +92,8 @@ $DSH_HOME/state/agent-preset-recommender/report.json
     claudeRoots:
       - ~/.claude/projects
     claudeTranscriptRoots: [] # 必须显式选择加入
+    claudeWorkflowRoots:
+      - ~/.claude/workflows   # 只做清单，绝不读取脚本正文
     workbuddyRoots:
       - ~/.codebuddy
       - ~/.workbuddy
@@ -137,7 +140,7 @@ DSH 启动时默认会读取 `CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`CODEBUDDY_CON
 - 私有状态目录存在时，同一来源/路径的密钥派生 ID 保持稳定；删除 `identity.key` 会主动生成一组新的 ID。
 - 推荐反映本地使用频率，不代表任务质量或组织策略。
 - 插件不会验证可选产品/能力是否已安装或已认证。
-- JSONL 超出字节上限的后续数据、过大的 JSON 文件、过旧文件，以及超出每来源数量限制的较旧文件会主动忽略。0.1.1 不读取压缩的 Codex `.jsonl.zst` rollout。
+- JSONL 超出字节上限的后续数据、过大的 JSON 文件、过旧文件，以及超出每来源数量限制的较旧文件会主动忽略。0.1.2 不读取压缩的 Codex `.jsonl.zst` rollout；Claude workflow 脚本与动态 workflow sidecar 也会有意跳过。
 
 ## 开发
 

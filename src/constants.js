@@ -17,6 +17,7 @@ export function sourceDefaultRoots(environment = process.env) {
     codexRoots: [join(codexHome, 'sessions'), join(codexHome, 'archived_sessions')],
     claudeRoots: [join(claudeHome, 'projects')],
     claudeTranscriptRoots: [],
+    claudeWorkflowRoots: [join(claudeHome, 'workflows')],
     workbuddyRoots: [...new Set([codebuddyHome, ...workbuddyHomes])],
   }
 }

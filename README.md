@@ -64,7 +64,8 @@ If `DSH_HOME` is unset, `~/.dsh` is used. The directory also holds a private ran
 | Source | Defaults | Read behavior |
 | --- | --- | --- |
 | Codex | `$CODEX_HOME/sessions`, `$CODEX_HOME/archived_sessions` or `~/.codex/*` | Bounded `.jsonl`/`.json`; selected session/project and tool-name fields |
-| Claude Code | `$CLAUDE_CONFIG_DIR/projects` or `~/.claude/projects` | Bounded `.jsonl`/`.json`; selected project and `tool_use` name fields |
+| Claude Code | `$CLAUDE_CONFIG_DIR/projects` or `~/.claude/projects` | Bounded `.jsonl`/`.json`; selected project and `tool_use` name fields; workflow sidecars, journals, task/session/plan stores, and global history are excluded |
+| Claude personal workflows | `$CLAUDE_CONFIG_DIR/workflows` or `~/.claude/workflows` | `.js` file presence and day only; scripts are never opened. Add project-local `<repo>/.claude/workflows` explicitly to `claudeWorkflowRoots` if desired |
 | Claude transcripts | Disabled | Scanned only when `claudeTranscriptRoots` is explicitly configured |
 | CodeBuddy CLI | `$CODEBUDDY_CONFIG_DIR/projects` or `~/.codebuddy/projects` | Bounded canonical project `.jsonl` records; ignores stale global process maps and tool-result/blob directories |
 | WorkBuddy | `$WORKBUDDY_CONFIG_DIR/projects` or `~/.workbuddy/projects`, `~/.workbuddy-ai/projects` | Bounded project `.jsonl` records; project-local `.workbuddy` metadata is inventory-only |
@@ -91,6 +92,8 @@ Configure the inserted `agent-preset-recommender` row in a DSH patch:
     claudeRoots:
       - ~/.claude/projects
     claudeTranscriptRoots: [] # opt in explicitly
+    claudeWorkflowRoots:
+      - ~/.claude/workflows   # inventory only; script content is never read
     workbuddyRoots:
       - ~/.codebuddy
       - ~/.workbuddy
@@ -137,7 +140,7 @@ Both tools return bounded readable text strings.
 - Keyed IDs are stable only while the private state directory remains available; deleting `identity.key` intentionally creates a new identifier set.
 - A recommendation reflects observed local frequency, not task quality or organizational policy.
 - The plugin does not verify that optional products or capabilities are installed or authenticated.
-- JSONL data after the byte cap, oversized JSON files, old files, and older files beyond a source limit are intentionally omitted. Compressed Codex `.jsonl.zst` rollouts are not read in 0.1.1.
+- JSONL data after the byte cap, oversized JSON files, old files, and older files beyond a source limit are intentionally omitted. Compressed Codex `.jsonl.zst` rollouts are not read in 0.1.2. Claude workflow scripts and dynamic workflow sidecars are deliberately not parsed.
 
 ## Development
 
