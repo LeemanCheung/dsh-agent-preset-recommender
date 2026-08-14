@@ -1,0 +1,4 @@
+# Persistent host-side scanner and model tools.
+- insert:
+    - id: agent-preset-recommender
+      name: 'dsh-agent-preset-recommender'
