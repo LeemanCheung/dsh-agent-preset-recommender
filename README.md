@@ -18,7 +18,9 @@ Restart the selected DSH profile after installation. The package declares `dsh.b
 
 Observed aggregate behavior is mapped to:
 
-- built-in presets: `minimal`, `code`, or `standard`;
+- capability presets: `minimal` or `standard`.
+
+`code` is a Code Mode presentation variant of `standard`, so this scanner never infers it from local activity volume or silently recommends it as a capability tier.
 - optional capabilities: Codex delegation, Claude Code delegation, workflows, web, MCP, and LSP.
 
 Every recommendation includes confidence and numerical evidence. Thresholds are deterministic and local; results never automatically change DSH.
@@ -140,7 +142,7 @@ Both tools return bounded readable text strings.
 - Keyed IDs are stable only while the private state directory remains available; deleting `identity.key` intentionally creates a new identifier set.
 - A recommendation reflects observed local frequency, not task quality or organizational policy.
 - The plugin does not verify that optional products or capabilities are installed or authenticated.
-- JSONL data after the byte cap, oversized JSON files, old files, and older files beyond a source limit are intentionally omitted. Compressed Codex `.jsonl.zst` rollouts are not read in 0.1.3. Claude workflow scripts and dynamic workflow sidecars are deliberately not parsed.
+- JSONL data after the byte cap, oversized JSON files, old files, and older files beyond a source limit are intentionally omitted. Compressed Codex `.jsonl.zst` rollouts are not read in 0.1.4. Claude workflow scripts and dynamic workflow sidecars are deliberately not parsed.
 
 ## Development
 

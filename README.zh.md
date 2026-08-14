@@ -18,7 +18,9 @@ dsh plugin --profile web add github:LeemanCheung/dsh-agent-preset-recommender
 
 聚合行为会映射到：
 
-- 内置 preset：`minimal`、`code`、`standard`；
+- 能力 preset：`minimal` 或 `standard`。
+
+`code` 是 `standard` 的 Code Mode 展示变体；扫描器不会根据本地活动量推断它，也不会把它作为能力等级自动推荐。
 - 可选能力：Codex 委派、Claude Code 委派、workflows、web、MCP、LSP。
 
 每条建议都包含置信度与证据计数。规则完全确定且仅在本地运行，不会自动更改 DSH。
@@ -140,7 +142,7 @@ DSH 启动时默认会读取 `CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`CODEBUDDY_CON
 - 私有状态目录存在时，同一来源/路径的密钥派生 ID 保持稳定；删除 `identity.key` 会主动生成一组新的 ID。
 - 推荐反映本地使用频率，不代表任务质量或组织策略。
 - 插件不会验证可选产品/能力是否已安装或已认证。
-- JSONL 超出字节上限的后续数据、过大的 JSON 文件、过旧文件，以及超出每来源数量限制的较旧文件会主动忽略。0.1.3 不读取压缩的 Codex `.jsonl.zst` rollout；Claude workflow 脚本与动态 workflow sidecar 也会有意跳过。
+- JSONL 超出字节上限的后续数据、过大的 JSON 文件、过旧文件，以及超出每来源数量限制的较旧文件会主动忽略。0.1.4 不读取压缩的 Codex `.jsonl.zst` rollout；Claude workflow 脚本与动态 workflow sidecar 也会有意跳过。
 
 ## 开发
 

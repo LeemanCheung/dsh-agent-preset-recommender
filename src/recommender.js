@@ -20,9 +20,10 @@ export function recommend(projects) {
   const evidence = summarize(projects)
   const toolTotal = Object.values(evidence.tools).reduce((a, b) => a + b, 0)
   const activeCategories = Object.values(evidence.tools).filter((count) => count > 0).length
-  let preset = 'minimal'
-  if (evidence.sessions >= 10 || toolTotal >= 30 || activeCategories >= 5) preset = 'standard'
-  else if (evidence.sessions > 0 || evidence.workflows > 0 || evidence.metadata > 0 || toolTotal > 0) preset = 'code'
+  // DSH `code` is a presentation variant of `standard`, not a weaker capability tier.
+  // Local history cannot verify that Code Mode is available, so never infer it from volume.
+  const needsStandard = evidence.sessions > 0 || evidence.workflows > 0 || toolTotal > 0
+  const preset = needsStandard ? 'standard' : 'minimal'
 
   const capabilities = []
   if (projects.some((project) => project.source === 'codex' && project.sessionCount > 0)) capabilities.push('Codex delegation')

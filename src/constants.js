@@ -36,7 +36,7 @@ export const PRIVACY_DECLARATION = Object.freeze({
   llmUsed: false,
 })
 
-export const REPORT_VERSION = 1
+export const REPORT_VERSION = 2
 export const REPORT_FILENAME = 'report.json'
 export const IDENTITY_FILENAME = 'identity.key'
 const roots = sourceDefaultRoots()

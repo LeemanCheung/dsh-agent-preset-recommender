@@ -31,12 +31,12 @@ function rootsFor(source, config) {
 }
 
 function recordsFromJson(value) {
-  if (Array.isArray(value)) return value.slice(0, 10_000)
-  if (!value || typeof value !== 'object') return []
+  if (Array.isArray(value)) return { records: value.slice(0, 10_000), envelope: null }
+  if (!value || typeof value !== 'object') return { records: [], envelope: null }
   for (const key of ['events', 'messages', 'records', 'entries']) {
-    if (Array.isArray(value[key])) return value[key].slice(0, 10_000)
+    if (Array.isArray(value[key])) return { records: value[key].slice(0, 10_000), envelope: value }
   }
-  return [value]
+  return { records: [value], envelope: null }
 }
 
 async function readBounded(path, maxBytes, signal) {
@@ -57,7 +57,10 @@ async function readBounded(path, maxBytes, signal) {
 }
 
 function parseRecords(text, extension, truncated) {
-  if (extension !== '.jsonl') return { records: recordsFromJson(JSON.parse(text)), malformed: false }
+  if (extension !== '.jsonl') {
+    const parsed = recordsFromJson(JSON.parse(text))
+    return { ...parsed, malformed: false }
+  }
 
   const records = []
   let malformed = false
@@ -72,7 +75,7 @@ function parseRecords(text, extension, truncated) {
     }
     if (records.length >= 10_000) break
   }
-  return { records, malformed }
+  return { records, envelope: null, malformed }
 }
 
 function makeProject(source, path, observedAt, identityKey) {
@@ -303,16 +306,14 @@ export async function scanProjects(config, options = {}) {
         throwIfAborted(signal)
         const parsed = parseRecords(text, extname(file.path).toLowerCase(), file.truncated)
         if (parsed.malformed) state.errors += 1
-        const extracted = extractRecords(source, parsed.records)
-        if (extracted.recordsSeen === 0) continue
+        const extracted = extractRecords(source, parsed.records, parsed.envelope)
+        if (!extracted.recognizedSession) continue
         const keyPath = file.projectPath || extracted.projectPath || dirname(file.path)
         const id = projectId(source, keyPath, scanConfig.identityKey)
         const project = projects.get(id)
           || makeProject(source, keyPath, file.mtime, scanConfig.identityKey)
         project.sessionCount += 1
-        if (extracted.toolCounts.workflow > 0 || extracted.toolCounts.delegation > 0) {
-          project.workflowCount += 1
-        }
+        if (extracted.toolCounts.workflow > 0) project.workflowCount += 1
         addToolCounts(project.toolCounts, extracted.toolCounts)
         updateObserved(project, file.mtime)
         projects.set(id, project)

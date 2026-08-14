@@ -6,7 +6,7 @@ import { DEFAULTS, SOURCE_NAMES } from './constants.js'
 import { renderReport } from './render.js'
 import { mergeReports, scanProjects } from './scanner.js'
 import { ReportStore } from './store.js'
-import { combineSignals, expandHome, isAbortError } from './utils.js'
+import { combineSignals, expandHome, isAbortError, throwIfAborted } from './utils.js'
 
 export const name = 'agent-preset-recommender'
 export const inject = ['tools']
@@ -32,6 +32,46 @@ function stateDirectory(config) {
   return join(dshHome, 'state', 'agent-preset-recommender')
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function invalidToolInput() {
+  throw new TypeError('Invalid tool input.')
+}
+
+function scanSourcesFromInput(args) {
+  if (!isPlainObject(args) || Object.keys(args).some((key) => key !== 'sources')) invalidToolInput()
+  if (args.sources === undefined) return undefined
+  if (!Array.isArray(args.sources) || args.sources.some((source) => !SOURCE_NAMES.includes(source))) invalidToolInput()
+  return args.sources
+}
+
+function projectIdFromInput(args) {
+  if (!isPlainObject(args) || Object.keys(args).some((key) => key !== 'project_id')) invalidToolInput()
+  if (args.project_id === undefined) return undefined
+  if (typeof args.project_id !== 'string' || !/^(codex|claude|workbuddy)-[a-f0-9]{16}$/i.test(args.project_id)) invalidToolInput()
+  return args.project_id
+}
+
+function safeDiagnostic(error) {
+  if (error?.name === 'AbortError') return 'aborted'
+  if (typeof error?.code === 'string' && /^[A-Z0-9_]{1,16}$/.test(error.code)) return error.code
+  return 'failed'
+}
+
+function makeBackgroundRunner(runScan, logger) {
+  let queued = false
+  return () => {
+    if (queued) return
+    queued = true
+    const task = Promise.resolve().then(() => runScan()).catch((error) => {
+      if (!isAbortError(error)) logger?.warn?.('scan failed: %s', safeDiagnostic(error))
+    }).finally(() => { queued = false })
+    return task
+  }
+}
+
 function makeScanTool(runScan) {
   return {
     name: 'scan_agent_projects',
@@ -52,7 +92,7 @@ function makeScanTool(runScan) {
       render: (_args, value) => [{ type: 'text', text: value }],
     },
     async execute(args, execution) {
-      const report = await runScan(args.sources, execution?.signal)
+      const report = await runScan(scanSourcesFromInput(args), execution?.signal)
       return renderReport(report)
     },
   }
@@ -74,7 +114,7 @@ function makeGetTool(getReport) {
       render: (_args, value) => [{ type: 'text', text: value }],
     },
     async execute(args) {
-      return renderReport(await getReport(), args.project_id)
+      return renderReport(await getReport(), projectIdFromInput(args))
     },
   }
 }
@@ -104,14 +144,19 @@ export function apply(ctx, config) {
     const selected = sources?.length ? [...new Set(sources)] : [...SOURCE_NAMES]
     const task = async () => {
       const signal = combineSignals(lifecycle.signal, externalSignal)
+      throwIfAborted(signal)
       const previous = await getReport()
+      throwIfAborted(signal)
       const fresh = await scanProjects({
         ...runtimeConfig,
         identityKey: await getIdentityKey(),
         cutoffMs: Date.now() - runtimeConfig.recentDays * 86_400_000,
       }, { sources: selected, signal })
+      throwIfAborted(signal)
       const report = mergeReports(previous, fresh, selected)
-      await store.save(report)
+      throwIfAborted(signal)
+      await store.save(report, signal)
+      throwIfAborted(signal)
       latest = report
       return report
     }
@@ -125,11 +170,7 @@ export function apply(ctx, config) {
 
   ctx.effect(() => {
     let timer = null
-    const backgroundScan = () => {
-      runScan().catch((error) => {
-        if (!isAbortError(error)) logger?.warn?.('scan failed: %s', error?.message || error)
-      })
-    }
+    const backgroundScan = makeBackgroundRunner(runScan, logger)
     if (config.scanOnStart) queueMicrotask(backgroundScan)
     if (config.intervalMinutes > 0) {
       timer = setInterval(backgroundScan, config.intervalMinutes * 60_000)
@@ -143,4 +184,6 @@ export function apply(ctx, config) {
   }, 'agent-preset-recommender.lifecycle')
 }
 
-export const internals = { makeScanTool, makeGetTool, stateDirectory }
+export const internals = {
+  makeScanTool, makeGetTool, makeBackgroundRunner, stateDirectory, scanSourcesFromInput, projectIdFromInput, safeDiagnostic,
+}

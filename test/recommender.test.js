@@ -8,7 +8,7 @@ import { categorizeTool, extractRecords } from '../src/extractors.js'
 import { apply, internals } from '../src/index.js'
 import { recommend } from '../src/recommender.js'
 import { scanProjects } from '../src/scanner.js'
-import { ReportStore } from '../src/store.js'
+import { isValidReport, ReportStore } from '../src/store.js'
 import { emptyToolCounts, projectId } from '../src/utils.js'
 
 const syntheticSecret = ['fixture', 'token', 'must', 'not', 'persist'].join('-')
@@ -79,6 +79,22 @@ test('recommendations map activity to built-in presets and optional capabilities
   assert.equal(recommend([]).preset, 'minimal')
 })
 
+test('recommendations never infer Code Mode from observed activity volume', () => {
+  const tools = emptyToolCounts()
+  const lowActivity = recommend([{ source: 'claude', sessionCount: 1, workflowCount: 0, metadataCount: 0, toolCounts: tools }])
+  const metadataOnly = recommend([{ source: 'claude', sessionCount: 0, workflowCount: 0, metadataCount: 3, toolCounts: tools }])
+  assert.equal(lowActivity.preset, 'standard')
+  assert.equal(metadataOnly.preset, 'minimal')
+  assert.notEqual(lowActivity.preset, 'code')
+})
+
+test('provider-specific delegation names win over fuzzy workflow matching', () => {
+  assert.equal(categorizeTool('Task'), 'delegation')
+  assert.equal(categorizeTool('Agent'), 'delegation')
+  assert.equal(categorizeTool('spawn_agent'), 'delegation')
+  assert.equal(categorizeTool('workflow_run'), 'workflow')
+})
+
 test('scanner handles Codex, Claude, WorkBuddy workflows and strips private content', async (t) => {
   const root = await sandbox(t)
   await put(join(root, 'codex', 'one.jsonl'), [
@@ -102,7 +118,8 @@ test('scanner handles Codex, Claude, WorkBuddy workflows and strips private cont
   assert.equal(report.projects.length, 3)
   assert.equal(report.sources.find((source) => source.name === 'codex').sessionCount, 1)
   assert.equal(report.sources.find((source) => source.name === 'claude').toolCounts.web, 1)
-  assert.equal(report.sources.find((source) => source.name === 'claude').workflowCount, 1)
+  assert.equal(report.sources.find((source) => source.name === 'claude').workflowCount, 0)
+  assert.equal(report.sources.find((source) => source.name === 'claude').toolCounts.delegation, 1)
   assert.equal(report.sources.find((source) => source.name === 'workbuddy').sessionCount, 1)
   assert.equal(report.sources.find((source) => source.name === 'workbuddy').workflowCount, 1)
   assert.equal(report.sources.find((source) => source.name === 'workbuddy').metadataCount, 1)
@@ -202,6 +219,22 @@ test('scanner honors a non-dot CodeBuddy configuration root', async (t) => {
   assert.equal(JSON.stringify(report).includes(syntheticSecret), false)
 })
 
+test('scanner ignores unrelated JSON and preserves wrapper project metadata', async (t) => {
+  const root = await sandbox(t)
+  await put(join(root, 'codex', 'unrelated.json'), JSON.stringify({ cwd: '/synthetic/unrelated', messages: [{ value: 'ordinary data' }] }))
+  await put(join(root, 'codex', 'wrapped.json'), JSON.stringify({
+    cwd: '/synthetic/wrapped-project',
+    records: [{ type: 'session_meta', payload: { id: 'safe-id' } }, { type: 'tool_call', name: 'Read' }],
+  }))
+
+  const report = await scanProjects(config(root), { sources: ['codex'] })
+  assert.equal(report.sources[0].sessionCount, 1)
+  assert.equal(report.projects.length, 1)
+  assert.equal(report.projects[0].toolCounts.files, 1)
+  assert.equal(JSON.stringify(report).includes('/synthetic/wrapped-project'), false)
+  assert.equal(JSON.stringify(report).includes('/synthetic/unrelated'), false)
+})
+
 test('scanner tolerates malformed files and enforces byte/file bounds', async (t) => {
   const root = await sandbox(t)
   await put(join(root, 'codex', '01-malformed.json'), '{not-json')
@@ -255,6 +288,56 @@ test('atomic store persists aggregate report and no sensitive strings', async (t
   assert.equal(raw.includes(root), false)
 })
 
+test('report store rejects malformed reports and preserves state after an aborted save', async (t) => {
+  const root = await sandbox(t)
+  const store = new ReportStore(join(root, 'state'))
+  const report = await scanProjects(config(root))
+  assert.equal(isValidReport(report), true)
+  await store.save(report)
+  await writeFile(store.path, JSON.stringify({ version: report.version, projects: [] }))
+  assert.equal(await store.load(), null)
+  await store.save(report)
+  const controller = new AbortController()
+  controller.abort(new DOMException('cancelled', 'AbortError'))
+  await assert.rejects(store.save({ ...report, generatedAt: '2026-01-03T00:00:00.000Z' }, controller.signal), { name: 'AbortError' })
+  assert.deepEqual(await store.load(), report)
+})
+
+test('storage failures and diagnostics do not disclose state paths', async (t) => {
+  const root = await sandbox(t)
+  const blocked = join(root, 'not-a-directory')
+  await writeFile(blocked, 'x')
+  const store = new ReportStore(join(blocked, 'state'))
+  const report = await scanProjects(config(root))
+  await assert.rejects(store.save(report), (error) => {
+    assert.equal(error.name, 'ReportStoreError')
+    assert.equal(error.message.includes(root), false)
+    assert.equal(error.message.includes(blocked), false)
+    return true
+  })
+  assert.equal(internals.safeDiagnostic({ code: 'EACCES', message: root }), 'EACCES')
+  assert.equal(internals.safeDiagnostic({ message: root }), 'failed')
+})
+
+test('background scheduling coalesces ticks while a scan is active', async () => {
+  let calls = 0
+  let release
+  const blocked = new Promise((resolve) => { release = resolve })
+  const backgroundScan = internals.makeBackgroundRunner(() => {
+    calls += 1
+    return calls === 1 ? blocked : Promise.resolve()
+  })
+
+  const first = backgroundScan()
+  assert.equal(backgroundScan(), undefined)
+  await Promise.resolve()
+  assert.equal(calls, 1)
+  release()
+  await first
+  await backgroundScan()
+  assert.equal(calls, 2)
+})
+
 test('report store creates one private identity key for keyed project IDs', async (t) => {
   const root = await sandbox(t)
   const store = new ReportStore(join(root, 'state'))
@@ -277,6 +360,10 @@ test('plugin registers raw tools and lifecycle cleanup aborts safely', async (t)
   apply(ctx, config(root, { stateDirectory: join(root, 'state') }))
   assert.deepEqual(registered.map((tool) => tool.name), ['scan_agent_projects', 'get_agent_preset_recommendations'])
   assert.equal(registered.every((tool) => tool.parameters.type === 'object' && typeof tool.execute === 'function'), true)
+  await assert.rejects(registered[0].execute(null, {}), /Invalid tool input/)
+  await assert.rejects(registered[0].execute({ sources: ['unknown'] }, {}), /Invalid tool input/)
+  await assert.rejects(registered[0].execute({ sources: [], extra: true }, {}), /Invalid tool input/)
+  await assert.rejects(registered[1].execute({ project_id: 'not-an-id' }), /Invalid tool input/)
 
   const scanText = await registered[0].execute({ sources: ['codex'] }, {})
   assert.match(scanText, /Preset: minimal/)

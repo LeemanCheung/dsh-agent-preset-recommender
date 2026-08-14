@@ -11,10 +11,13 @@ function renderRecommendation(recommendation) {
 }
 
 export function renderReport(report, projectId) {
-  if (!report) return 'No persisted report is available. Run scan_agent_projects first.'
+  if (!report || !Array.isArray(report.projects) || !Array.isArray(report.sources)
+    || !report.recommendation || !report.privacy) {
+    return 'No persisted report is available. Run scan_agent_projects first.'
+  }
   if (projectId) {
     const project = report.projects.find((entry) => entry.id === projectId)
-    if (!project) return `No project found for id ${projectId}.`
+    if (!project) return 'No project found for that identifier.'
     return bounded([
       `Agent preset recommendation for ${project.id}`,
       `Source: ${project.source}`,
