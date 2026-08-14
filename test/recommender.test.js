@@ -49,11 +49,17 @@ test('extractors select project/tool metadata and categorize tools', () => {
   ])
   const claude = extractRecords('claude', [{ cwd: '/synthetic/project', message: { content: [{ type: 'tool_use', name: 'Read', input: { secret: syntheticSecret } }] } }])
   const workbuddy = extractRecords('workbuddy', [{ projectPath: '/synthetic/project', tools: ['workflow_run', { name: 'mcp_lookup' }] }])
+  const typedCodex = extractRecords('codex', [
+    { type: 'response_item', payload: { type: 'web_search_call' } },
+    { type: 'response_item', payload: { type: 'local_shell_call' } },
+  ])
 
   assert.equal(codex.toolCounts.shell, 1)
   assert.equal(claude.toolCounts.files, 1)
   assert.equal(workbuddy.toolCounts.workflow, 1)
   assert.equal(workbuddy.toolCounts.mcp, 1)
+  assert.equal(typedCodex.toolCounts.web, 1)
+  assert.equal(typedCodex.toolCounts.shell, 1)
   assert.equal(categorizeTool('language_server_definition'), 'lsp')
   assert.equal(JSON.stringify({ codex, claude, workbuddy }).includes(syntheticSecret), false)
   assert.equal(JSON.stringify({ codex, claude, workbuddy }).includes(syntheticPrompt), false)
@@ -156,6 +162,28 @@ test('scanner inventories Claude workflows without reading workflow sidecars or 
   assert.equal(JSON.stringify(report).includes(syntheticPrompt), false)
 })
 
+test('scanner deduplicates Claude child traces while retaining their tool evidence', async (t) => {
+  const root = await sandbox(t)
+  const claude = join(root, 'claude')
+  const cwd = '/synthetic/claude-parent'
+  await put(join(claude, 'project-key', 'session-001.jsonl'), JSON.stringify({
+    type: 'user', cwd, message: { content: [{ type: 'tool_use', name: 'Read' }] },
+  }))
+  await put(join(claude, 'project-key', 'session-001', 'subagents', 'agent-a.jsonl'), JSON.stringify({
+    type: 'assistant', cwd, message: { content: [{ type: 'tool_use', name: 'WebSearch' }] },
+  }))
+  await put(join(claude, 'project-key', 'session-001', 'subagents', 'agent-b.jsonl'), JSON.stringify({
+    type: 'assistant', cwd, message: { content: [{ type: 'tool_use', name: 'Task' }] },
+  }))
+
+  const report = await scanProjects(config(root), { sources: ['claude'] })
+  const source = report.sources[0]
+  assert.equal(source.sessionCount, 1)
+  assert.equal(source.toolCounts.files, 1)
+  assert.equal(source.toolCounts.web, 1)
+  assert.equal(source.toolCounts.delegation, 1)
+})
+
 test('scanner recognizes canonical CodeBuddy and WorkBuddy global project stores', async (t) => {
   const root = await sandbox(t)
   const codebuddy = join(root, '.codebuddy')
@@ -254,6 +282,19 @@ test('scanner tolerates malformed files and enforces byte/file bounds', async (t
   assert.equal(source.parseOrAccessErrors, 2)
   assert.equal(report.projects.length, 2)
   assert.equal(report.projects.reduce((sum, project) => sum + project.toolCounts.files, 0), 1)
+})
+
+test('scanner samples JSONL larger than the default byte limit instead of skipping it', async (t) => {
+  const root = await sandbox(t)
+  await put(join(root, 'codex', 'large-session.jsonl'), [
+    JSON.stringify({ type: 'session_meta', payload: { cwd: '/synthetic/large-jsonl' } }),
+    JSON.stringify({ type: 'message', content: 'x'.repeat(DEFAULTS.maxBytesPerFile + 4096) }),
+  ].join('\n'))
+
+  const report = await scanProjects(config(root), { sources: ['codex'] })
+  assert.equal(report.sources[0].sessionCount, 1)
+  assert.equal(report.sources[0].truncatedFiles, 1)
+  assert.equal(report.sources[0].skippedOversize, 0)
 })
 
 test('scanner keeps the newest files when a source exceeds its file limit', async (t) => {

@@ -1,5 +1,5 @@
 import { open, readdir, stat } from 'node:fs/promises'
-import { dirname, extname, join } from 'node:path'
+import { basename, dirname, extname, join } from 'node:path'
 import { PRIVACY_DECLARATION, REPORT_VERSION, SOURCE_NAMES } from './constants.js'
 import { extractRecords } from './extractors.js'
 import { recommend } from './recommender.js'
@@ -76,6 +76,15 @@ function parseRecords(text, extension, truncated) {
     if (records.length >= 10_000) break
   }
   return { records, envelope: null, malformed }
+}
+
+function sessionKey(source, file, extracted) {
+  if (source !== 'claude') return `file:${pathIdentityKey(file.path)}`
+  if (extracted.sessionId) return `id:${extracted.sessionId}`
+  const normalized = normalizedPath(file.path)
+  const child = /\/([^/]+)\/subagents\/[^/]+\.jsonl$/i.exec(normalized)
+  if (child) return `parent:${child[1]}`
+  return `parent:${basename(file.path, extname(file.path))}`
 }
 
 function makeProject(source, path, observedAt, identityKey) {
@@ -272,6 +281,8 @@ export async function scanProjects(config, options = {}) {
       : Date.now() - config.recentDays * 86_400_000,
   }
   const projects = new Map()
+  const countedSessions = new Set()
+  const workflowSessions = new Set()
   const sourceReports = []
 
   for (const source of requested) {
@@ -312,8 +323,15 @@ export async function scanProjects(config, options = {}) {
         const id = projectId(source, keyPath, scanConfig.identityKey)
         const project = projects.get(id)
           || makeProject(source, keyPath, file.mtime, scanConfig.identityKey)
-        project.sessionCount += 1
-        if (extracted.toolCounts.workflow > 0) project.workflowCount += 1
+        const uniqueSession = `${id}\0${sessionKey(source, file, extracted)}`
+        if (!countedSessions.has(uniqueSession)) {
+          countedSessions.add(uniqueSession)
+          project.sessionCount += 1
+        }
+        if (extracted.toolCounts.workflow > 0 && !workflowSessions.has(uniqueSession)) {
+          workflowSessions.add(uniqueSession)
+          project.workflowCount += 1
+        }
         addToolCounts(project.toolCounts, extracted.toolCounts)
         updateObserved(project, file.mtime)
         projects.set(id, project)

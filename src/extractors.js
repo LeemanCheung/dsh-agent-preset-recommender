@@ -10,6 +10,7 @@ const EXACT_TOOL_CATEGORIES = new Map([
 const CODEX_SESSION_TYPES = new Set(['session_meta', 'response_item', 'turn_context', 'event_msg', 'message', 'tool_call'])
 const CLAUDE_SESSION_TYPES = new Set(['user', 'assistant', 'system', 'summary', 'progress', 'result', 'tool_use'])
 const WORKBUDDY_SESSION_TYPES = new Set(['message', 'reasoning', 'function_call', 'function_call_result', 'tool_call', 'tool_use'])
+const CODEX_TYPED_TOOL_TYPES = new Set(['web_search_call', 'local_shell_call', 'computer_call'])
 const CATEGORY_PATTERNS = [
   ['delegation', /subagent|delegate|agent[_-]?(run|spawn|fork)|claude.?code|codex/i],
   ['workflow', /workflow|plan|todo|task(?:$|[_-]?(?:create|update|list|get|run|dag))/i],
@@ -36,6 +37,11 @@ function addTool(result, name) {
   result.toolCounts[categorizeTool(name)] += 1
 }
 
+function selectedSessionId(record) {
+  const candidates = [record?.sessionId, record?.session_id, record?.payload?.sessionId, record?.payload?.session_id]
+  return candidates.find((value) => typeof value === 'string' && value.length > 0 && value.length <= 256)
+}
+
 function selectedPath(record) {
   const candidates = [
     record?.cwd,
@@ -57,11 +63,16 @@ export function extractCodexRecord(record, result) {
     result.recognizedSession = true
     addTool(result, payload.name)
   }
+  if (CODEX_TYPED_TOOL_TYPES.has(payload?.type)) {
+    result.recognizedSession = true
+    addTool(result, payload.type)
+  }
   if (record?.type === 'tool_call') addTool(result, record.tool_name || record.name)
 }
 
 export function extractClaudeRecord(record, result) {
   result.projectPath ||= selectedPath(record)
+  result.sessionId ||= selectedSessionId(record)
   if (CLAUDE_SESSION_TYPES.has(record?.type)) result.recognizedSession = true
   if (record?.type === 'tool_use') addTool(result, record.name)
   const content = record?.message?.content
@@ -96,7 +107,9 @@ export function extractWorkBuddyRecord(record, result) {
 }
 
 export function extractRecords(source, records, envelope) {
-  const result = { projectPath: null, toolCounts: emptyToolCounts(), recordsSeen: 0, recognizedSession: false }
+  const result = {
+    projectPath: null, sessionId: null, toolCounts: emptyToolCounts(), recordsSeen: 0, recognizedSession: false,
+  }
   const extractor = source === 'codex' ? extractCodexRecord : source === 'claude' ? extractClaudeRecord : extractWorkBuddyRecord
   if (envelope && typeof envelope === 'object' && !Array.isArray(envelope)) extractor(envelope, result)
   for (const record of records) {

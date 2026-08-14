@@ -1,6 +1,6 @@
 {
   "name": "dsh-agent-preset-recommender",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Privacy-safe local activity scanner and agent preset recommender for DeepSeek Harness",
   "type": "module",
   "main": "src/index.js",
