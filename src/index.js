@@ -34,7 +34,7 @@ function stateDirectory(config) {
 function makeScanTool(runScan) {
   return {
     name: 'scan_agent_projects',
-    description: 'Run a fresh privacy-safe local scan of Codex, Claude Code, and WorkBuddy metadata, persist aggregate recommendations, and return a bounded summary.',
+    description: 'Run a fresh privacy-safe local scan of Codex, Claude Code, CodeBuddy, and WorkBuddy metadata, persist aggregate recommendations, and return a bounded summary.',
     parameters: {
       type: 'object',
       properties: {
@@ -64,7 +64,7 @@ function makeGetTool(getReport) {
     parameters: {
       type: 'object',
       properties: {
-        project_id: { type: 'string', description: 'Optional hashed project id for one project.' },
+        project_id: { type: 'string', description: 'Optional installation-keyed project id for one project.' },
       },
       additionalProperties: false,
     },

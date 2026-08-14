@@ -43,7 +43,7 @@ The scanner persists aggregate metadata only:
 - source and installation-keyed project identifier;
 - categorized tool counts;
 - session, workflow, and project-metadata counts;
-- first/last observation timestamps;
+- first/last observation dates (day-level);
 - recommendation, confidence, and evidence counts;
 - an explicit machine-readable privacy declaration.
 
@@ -63,11 +63,12 @@ If `DSH_HOME` is unset, `~/.dsh` is used. The directory also holds a private ran
 
 | Source | Defaults | Read behavior |
 | --- | --- | --- |
-| Codex | `~/.codex/sessions`, `~/.codex/archived_sessions` | Bounded `.jsonl`/`.json`; selected session/project and tool-name fields |
-| Claude Code | `~/.claude/projects` | Bounded `.jsonl`/`.json`; selected project and `tool_use` name fields |
+| Codex | `$CODEX_HOME/sessions`, `$CODEX_HOME/archived_sessions` or `~/.codex/*` | Bounded `.jsonl`/`.json`; selected session/project and tool-name fields |
+| Claude Code | `$CLAUDE_CONFIG_DIR/projects` or `~/.claude/projects` | Bounded `.jsonl`/`.json`; selected project and `tool_use` name fields |
 | Claude transcripts | Disabled | Scanned only when `claudeTranscriptRoots` is explicitly configured |
-| WorkBuddy/CodeBuddy sessions | `~/WorkBuddy`, `~/CodeBuddy`, `~/.codebuddy` | Bounded `.jsonl`/`.json` only below project `.workbuddy/*` or `.codebuddy/*` session directories |
-| WorkBuddy/CodeBuddy project metadata | `.workbuddy` or `.codebuddy` `memory`, `workflows`, or `plans` beneath configured roots | Count and mtime only; content is not read; memory never becomes workflow evidence |
+| CodeBuddy CLI | `$CODEBUDDY_CONFIG_DIR/projects` or `~/.codebuddy/projects` | Bounded canonical project `.jsonl` records; ignores stale global process maps and tool-result/blob directories |
+| WorkBuddy | `$WORKBUDDY_CONFIG_DIR/projects` or `~/.workbuddy/projects`, `~/.workbuddy-ai/projects` | Bounded project `.jsonl` records; project-local `.workbuddy` metadata is inventory-only |
+| Project-local CodeBuddy/WorkBuddy metadata | `<project>/.codebuddy` or `<project>/.workbuddy` `memory`, `workflows`, `plans`, or `automations` | Count and day only; content is not read; memory never becomes workflow evidence |
 
 Formats vary between product releases. Unknown fields are ignored, malformed records are skipped, and malformed files are counted as errors without stopping the scan.
 
@@ -91,10 +92,14 @@ Configure the inserted `agent-preset-recommender` row in a DSH patch:
       - ~/.claude/projects
     claudeTranscriptRoots: [] # opt in explicitly
     workbuddyRoots:
+      - ~/.codebuddy
+      - ~/.workbuddy
+      - ~/.workbuddy-ai
       - ~/WorkBuddy
       - ~/CodeBuddy
-      - ~/.codebuddy
 ```
+
+Defaults honor `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, `CODEBUDDY_CONFIG_DIR`, and `WORKBUDDY_CONFIG_DIR` when DSH starts. Supplying an explicit root list in the plugin configuration takes precedence over those defaults.
 
 Bounds are validated: file counts, file bytes, recency, and interval are finite. Missing/inaccessible roots are skipped. Startup, scheduled, and tool-triggered scans share one serialized queue and are aborted on plugin disposal.
 
@@ -132,7 +137,7 @@ Both tools return bounded readable text strings.
 - Keyed IDs are stable only while the private state directory remains available; deleting `identity.key` intentionally creates a new identifier set.
 - A recommendation reflects observed local frequency, not task quality or organizational policy.
 - The plugin does not verify that optional products or capabilities are installed or authenticated.
-- JSONL data after the byte cap, oversized JSON files, old files, and older files beyond a source limit are intentionally omitted.
+- JSONL data after the byte cap, oversized JSON files, old files, and older files beyond a source limit are intentionally omitted. Compressed Codex `.jsonl.zst` rollouts are not read in 0.1.1.
 
 ## Development
 

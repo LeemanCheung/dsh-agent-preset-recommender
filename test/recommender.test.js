@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, utimes, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { DEFAULTS } from '../src/constants.js'
+import { DEFAULTS, sourceDefaultRoots } from '../src/constants.js'
 import { categorizeTool, extractRecords } from '../src/extractors.js'
 import { apply, internals } from '../src/index.js'
 import { recommend } from '../src/recommender.js'
@@ -109,6 +109,64 @@ test('scanner handles Codex, Claude, WorkBuddy workflows and strips private cont
   assert.equal(serialized.includes(syntheticPrompt), false)
   assert.equal(serialized.includes('/synthetic/'), false)
   assert.equal(report.privacy.contentRetention, false)
+})
+
+test('scanner recognizes canonical CodeBuddy and WorkBuddy global project stores', async (t) => {
+  const root = await sandbox(t)
+  const codebuddy = join(root, '.codebuddy')
+  const workbuddy = join(root, '.workbuddy')
+  await put(join(codebuddy, 'projects', 'encoded-codebuddy-project', 'session.jsonl'), JSON.stringify({
+    type: 'function_call', name: 'shell_command', content: syntheticSecret,
+  }))
+  await put(join(codebuddy, 'projects', 'encoded-codebuddy-project', 'session', 'subagents', 'agent.jsonl'), JSON.stringify({
+    type: 'message', content: syntheticPrompt,
+  }))
+  await put(join(codebuddy, 'sessions', '12345.json'), JSON.stringify({
+    sessionId: 'stale-map', cwd: '/sensitive/path', content: syntheticSecret,
+  }))
+  await put(join(workbuddy, 'projects', 'encoded-workbuddy-project', 'session.jsonl'), JSON.stringify({
+    type: 'function_call', name: 'Read', content: syntheticPrompt,
+  }))
+  await put(join(workbuddy, 'automations', 'opaque-id', 'automation.toml'), `prompt = "${syntheticSecret}"`)
+
+  const report = await scanProjects(config(root, { workbuddyRoots: [codebuddy, workbuddy] }), { sources: ['workbuddy'] })
+  const source = report.sources[0]
+  assert.equal(source.sessionCount, 3)
+  assert.equal(source.workflowCount, 1)
+  assert.equal(source.toolCounts.shell, 1)
+  assert.equal(source.toolCounts.files, 1)
+  assert.equal(source.projectCount, 3)
+  assert.equal(JSON.stringify(report).includes(syntheticSecret), false)
+  assert.equal(JSON.stringify(report).includes(syntheticPrompt), false)
+})
+
+test('environment config roots override default product locations', () => {
+  const roots = sourceDefaultRoots({
+    CODEX_HOME: '/configured/codex',
+    CLAUDE_CONFIG_DIR: '/configured/claude',
+    CODEBUDDY_CONFIG_DIR: '/configured/codebuddy',
+    WORKBUDDY_CONFIG_DIR: '/configured/workbuddy',
+  })
+  assert.deepEqual(roots.codexRoots, [join('/configured/codex', 'sessions'), join('/configured/codex', 'archived_sessions')])
+  assert.deepEqual(roots.claudeRoots, [join('/configured/claude', 'projects')])
+  assert.deepEqual(roots.workbuddyRoots, ['/configured/codebuddy', '/configured/workbuddy'])
+})
+
+test('scanner honors a non-dot CodeBuddy configuration root', async (t) => {
+  const root = await sandbox(t)
+  const customConfig = join(root, 'custom-codebuddy-config')
+  await put(join(customConfig, 'projects', 'encoded-project', 'session.jsonl'), JSON.stringify({
+    type: 'function_call', name: 'Read', content: syntheticPrompt,
+  }))
+  await put(join(customConfig, 'sessions', '12345.json'), JSON.stringify({
+    sessionId: 'stale-map', content: syntheticSecret,
+  }))
+
+  const report = await scanProjects(config(root, { workbuddyRoots: [customConfig] }), { sources: ['workbuddy'] })
+  assert.equal(report.sources[0].sessionCount, 1)
+  assert.equal(report.sources[0].toolCounts.files, 1)
+  assert.equal(JSON.stringify(report).includes(syntheticPrompt), false)
+  assert.equal(JSON.stringify(report).includes(syntheticSecret), false)
 })
 
 test('scanner tolerates malformed files and enforces byte/file bounds', async (t) => {

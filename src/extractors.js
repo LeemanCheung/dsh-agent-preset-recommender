@@ -56,7 +56,9 @@ export function extractClaudeRecord(record, result) {
 
 export function extractWorkBuddyRecord(record, result) {
   result.projectPath ||= selectedPath(record)
-  if (record?.type === 'tool_call' || record?.type === 'tool_use') addTool(result, record.name || record.tool_name)
+  if (record?.type === 'tool_call' || record?.type === 'tool_use' || record?.type === 'function_call') {
+    addTool(result, record.name || record.tool_name)
+  }
   if (typeof record?.tool === 'string') addTool(result, record.tool)
   if (Array.isArray(record?.tools)) {
     for (const item of record.tools) addTool(result, typeof item === 'string' ? item : item?.name)

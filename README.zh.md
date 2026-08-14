@@ -43,7 +43,7 @@ cordis.patch.yml → src/index.js（Cordis 生命周期 + 原始模型工具）
 - 数据源与本机密钥派生的项目 ID；
 - 分类工具计数；
 - session、workflow 与项目元数据数量；
-- 首次/最后观测时间；
+- 首次/最后观测日期（精度为天）；
 - 推荐、置信度与证据计数；
 - 明确、机器可读的隐私声明。
 
@@ -63,11 +63,12 @@ $DSH_HOME/state/agent-preset-recommender/report.json
 
 | 来源 | 默认位置 | 读取方式 |
 | --- | --- | --- |
-| Codex | `~/.codex/sessions`、`~/.codex/archived_sessions` | 有界 `.jsonl`/`.json`；只读 session/project 与工具名称字段 |
-| Claude Code | `~/.claude/projects` | 有界 `.jsonl`/`.json`；只读 project 与 `tool_use` 名称字段 |
+| Codex | `$CODEX_HOME/sessions`、`$CODEX_HOME/archived_sessions`，或 `~/.codex/*` | 有界 `.jsonl`/`.json`；只读 session/project 与工具名称字段 |
+| Claude Code | `$CLAUDE_CONFIG_DIR/projects` 或 `~/.claude/projects` | 有界 `.jsonl`/`.json`；只读 project 与 `tool_use` 名称字段 |
 | Claude transcripts | 默认关闭 | 仅显式配置 `claudeTranscriptRoots` 后扫描 |
-| WorkBuddy/CodeBuddy sessions | `~/WorkBuddy`、`~/CodeBuddy`、`~/.codebuddy` | 仅扫描项目 `.workbuddy/*` 或 `.codebuddy/*` session 目录下的有界 `.jsonl`/`.json` |
-| WorkBuddy/CodeBuddy 项目元数据 | 配置根下 `.workbuddy` 或 `.codebuddy` 的 `memory`、`workflows`、`plans` | 仅计数与 mtime；不读正文；memory 不会成为 workflow 证据 |
+| CodeBuddy CLI | `$CODEBUDDY_CONFIG_DIR/projects` 或 `~/.codebuddy/projects` | 读取有界、规范项目 `.jsonl` 记录；跳过易过期的全局进程映射及 tool-result/blob 目录 |
+| WorkBuddy | `$WORKBUDDY_CONFIG_DIR/projects` 或 `~/.workbuddy/projects`、`~/.workbuddy-ai/projects` | 读取有界项目 `.jsonl` 记录；项目内 `.workbuddy` 元数据只做清单 |
+| 项目内 CodeBuddy/WorkBuddy 元数据 | `<project>/.codebuddy` 或 `<project>/.workbuddy` 的 `memory`、`workflows`、`plans`、`automations` | 只计数与日期；不读正文；memory 不会成为 workflow 证据 |
 
 不同产品版本的格式可能变化。未知字段会被忽略；畸形记录跳过，畸形文件计入错误但不会终止扫描。
 
@@ -91,10 +92,14 @@ $DSH_HOME/state/agent-preset-recommender/report.json
       - ~/.claude/projects
     claudeTranscriptRoots: [] # 必须显式选择加入
     workbuddyRoots:
+      - ~/.codebuddy
+      - ~/.workbuddy
+      - ~/.workbuddy-ai
       - ~/WorkBuddy
       - ~/CodeBuddy
-      - ~/.codebuddy
 ```
+
+DSH 启动时默认会读取 `CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`CODEBUDDY_CONFIG_DIR`、`WORKBUDDY_CONFIG_DIR`。在插件配置中显式设置根目录列表会优先于这些默认值。
 
 文件数、单文件字节数、最近天数与间隔均受验证和限制。不存在或不可访问的根目录会跳过。启动、定时及工具触发扫描共用串行队列，并在插件卸载时取消。
 
@@ -132,7 +137,7 @@ $DSH_HOME/state/agent-preset-recommender/report.json
 - 私有状态目录存在时，同一来源/路径的密钥派生 ID 保持稳定；删除 `identity.key` 会主动生成一组新的 ID。
 - 推荐反映本地使用频率，不代表任务质量或组织策略。
 - 插件不会验证可选产品/能力是否已安装或已认证。
-- JSONL 超出字节上限的后续数据、过大的 JSON 文件、过旧文件，以及超出每来源数量限制的较旧文件会主动忽略。
+- JSONL 超出字节上限的后续数据、过大的 JSON 文件、过旧文件，以及超出每来源数量限制的较旧文件会主动忽略。0.1.1 不读取压缩的 Codex `.jsonl.zst` rollout。
 
 ## 开发
 

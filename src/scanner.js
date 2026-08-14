@@ -8,11 +8,13 @@ import { addToolCounts, emptyToolCounts, expandHome, iso, pathIdentityKey, proje
 const SKIP_DIRECTORIES = new Set([
   'node_modules', '.git', '.cache', 'cache', 'caches', '.plugins', 'plugins',
   'output', 'out', 'dist', 'build', 'coverage', '.venv', 'venv',
+  'tool-results', 'blobs', 'file-history',
 ])
 const WORKBUDDY_MEMORY_AREAS = new Set(['memory'])
-const WORKBUDDY_WORKFLOW_AREAS = new Set(['workflows', 'plans'])
+const WORKBUDDY_WORKFLOW_AREAS = new Set(['workflows', 'plans', 'automations'])
 const WORKBUDDY_SESSION_AREAS = new Set(['sessions', 'history', 'tasks'])
-const WORKBUDDY_METADATA_EXTENSIONS = new Set(['.md', '.json', '.jsonl', '.yaml', '.yml'])
+const WORKBUDDY_METADATA_EXTENSIONS = new Set(['.md', '.json', '.jsonl', '.yaml', '.yml', '.toml'])
+const RECORD_EXTENSIONS = new Set(['.json', '.jsonl'])
 
 function rootsFor(source, config) {
   if (source === 'codex') return config.codexRoots
@@ -83,37 +85,80 @@ function updateObserved(project, observedAt) {
   if (!project.lastObservedAt || observedAt > project.lastObservedAt) project.lastObservedAt = observedAt
 }
 
-function workbuddyLocation(path) {
-  const normalized = path.replaceAll('\\', '/')
+function normalizedPath(value) {
+  return String(value).replaceAll('\\', '/')
+}
+
+function workbuddyLocation(filePath) {
+  const normalized = normalizedPath(filePath)
   const lower = normalized.toLowerCase()
-  const markers = ['/.workbuddy/', '/.codebuddy/']
+  const markers = ['/.workbuddy-ai/', '/.workbuddy/', '/.codebuddy/']
     .map((marker) => ({ marker, index: lower.lastIndexOf(marker) }))
     .filter((entry) => entry.index >= 0)
     .sort((left, right) => right.index - left.index)
   const found = markers[0]
   if (!found) return null
-  const area = normalized.slice(found.index + found.marker.length).split('/')[0].toLowerCase()
-  return { area, projectPath: path.slice(0, found.index) }
+  const segments = normalized.slice(found.index + found.marker.length).split('/').filter(Boolean)
+  if (segments.length === 0) return null
+  return {
+    marker: found.marker,
+    rootPath: normalized.slice(0, found.index),
+    storePath: `${normalized.slice(0, found.index)}${found.marker.slice(0, -1)}`,
+    area: segments[0].toLowerCase(),
+    segments,
+  }
 }
 
-function classifyFile(path, source) {
-  const extension = extname(path).toLowerCase()
+function isConfiguredStore(location, root) {
+  return pathIdentityKey(location.storePath) === pathIdentityKey(normalizedPath(root))
+}
+
+function configuredRootLocation(filePath, root) {
+  const normalizedFile = normalizedPath(filePath)
+  const normalizedRoot = normalizedPath(root).replace(/\/$/, '')
+  const fileKey = pathIdentityKey(normalizedFile)
+  const rootKey = pathIdentityKey(normalizedRoot)
+  if (!fileKey.startsWith(`${rootKey}/`)) return null
+  const segments = normalizedFile.slice(normalizedRoot.length + 1).split('/').filter(Boolean)
+  if (segments.length === 0) return null
+  return { storePath: normalizedRoot, area: segments[0].toLowerCase(), segments }
+}
+
+function classifyFile(filePath, source, root) {
+  const extension = extname(filePath).toLowerCase()
   if (source !== 'workbuddy') {
-    return extension === '.json' || extension === '.jsonl'
-      ? { kind: 'session', projectPath: null }
-      : null
+    return RECORD_EXTENSIONS.has(extension) ? { kind: 'session', projectPath: null } : null
   }
 
-  const location = workbuddyLocation(path)
-  if (!location) return null
-  if (WORKBUDDY_MEMORY_AREAS.has(location.area) && WORKBUDDY_METADATA_EXTENSIONS.has(extension)) {
-    return { kind: 'metadata', projectPath: location.projectPath }
+  const configuredLocation = configuredRootLocation(filePath, root)
+  const location = workbuddyLocation(filePath)
+  const globalStore = location && isConfiguredStore(location, root)
+  const canonicalLocation = globalStore ? location : configuredLocation
+
+  // Canonical CodeBuddy/WorkBuddy transcripts are under <config>/projects/<project>/<session>.jsonl.
+  if (canonicalLocation?.area === 'projects' && canonicalLocation.segments.length >= 3
+    && RECORD_EXTENSIONS.has(extension)) {
+    return {
+      kind: 'session',
+      projectPath: `${canonicalLocation.storePath}/projects/${canonicalLocation.segments[1]}`,
+    }
   }
-  if (WORKBUDDY_WORKFLOW_AREAS.has(location.area) && WORKBUDDY_METADATA_EXTENSIONS.has(extension)) {
-    return { kind: 'workflow', projectPath: location.projectPath }
+
+  // Active process maps under a global <config>/sessions directory are stale/non-canonical.
+  if (canonicalLocation?.area === 'sessions') return null
+
+  const metadataLocation = location || configuredLocation
+  if (!metadataLocation) return null
+  const projectPath = location ? location.rootPath : metadataLocation.storePath
+  if (WORKBUDDY_MEMORY_AREAS.has(metadataLocation.area) && WORKBUDDY_METADATA_EXTENSIONS.has(extension)) {
+    return { kind: 'metadata', projectPath }
   }
-  if (WORKBUDDY_SESSION_AREAS.has(location.area) && (extension === '.json' || extension === '.jsonl')) {
-    return { kind: 'session', projectPath: location.projectPath }
+  if (WORKBUDDY_WORKFLOW_AREAS.has(metadataLocation.area) && WORKBUDDY_METADATA_EXTENSIONS.has(extension)) {
+    return { kind: 'workflow', projectPath }
+  }
+  if (!globalStore && configuredLocation?.area !== 'sessions' && WORKBUDDY_SESSION_AREAS.has(metadataLocation.area)
+    && RECORD_EXTENSIONS.has(extension)) {
+    return { kind: 'session', projectPath }
   }
   return null
 }
@@ -164,7 +209,7 @@ async function collectFiles(root, source, config, state, signal) {
         continue
       }
       if (!entry.isFile()) continue
-      const classification = classifyFile(path, source)
+      const classification = classifyFile(path, source, root)
       if (!classification) continue
       try {
         const info = await stat(path)
@@ -178,7 +223,7 @@ async function collectFiles(root, source, config, state, signal) {
           path,
           ...classification,
           truncated,
-          mtime: iso(info.mtime),
+          mtime: iso(info.mtime)?.slice(0, 10) || null,
           mtimeMs: info.mtimeMs,
           size: info.size,
         }, config.maxFilesPerSource)

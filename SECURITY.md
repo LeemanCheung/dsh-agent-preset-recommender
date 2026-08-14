@@ -6,7 +6,7 @@ Please report vulnerabilities privately through GitHub Security Advisories for t
 
 ## Privacy boundary
 
-The plugin reads configured local metadata roots and writes one aggregate report plus an installation-local random identity key. It does not make network requests, invoke an LLM, execute discovered commands, read WorkBuddy/CodeBuddy memory, workflow, or plan content, or modify agent presets. Persisted output must never contain prompt/response content, commands, tool arguments, raw events, absolute paths, usernames, or secrets.
+The plugin reads configured local metadata roots and writes one aggregate report plus an installation-local random identity key. It does not make network requests, invoke an LLM, execute discovered commands, read WorkBuddy/CodeBuddy memory, workflow, plan, or automation content, or modify agent presets. Persisted output must never contain prompt/response content, commands, tool arguments, raw events, absolute paths, usernames, or secrets; file observation times are reduced to dates.
 
 ## Supported versions
 
