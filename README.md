@@ -35,6 +35,13 @@ Observed aggregate behavior is mapped to:
 
 Every recommendation includes confidence and numerical evidence. Thresholds are deterministic and local; results never automatically change DSH.
 
+### Exact recommendation and evidence rules
+
+- `standard` is recommended when **at least one** recognized session, workflow, or categorized tool call exists. Metadata files alone—and an empty observation set—yield `minimal`.
+- Codex/Claude Code delegation needs a recognized session from that source. Workflows need a workflow count or `workflow`-category tool call; `web`, `MCP`, and `LSP` need their corresponding category count.
+- Confidence is `0` with no observations; otherwise it is `min(0.95, 0.35 + 0.2 × log10(observations + 1))`, rounded to two decimal places, where observations are sessions + workflows + categorized tool calls.
+- Tool names first use exact delegation aliases, then the fixed heuristic order **delegation → workflow → MCP → LSP → web → shell → search → files**; the first match wins and unmatched names are `other`. These are trend signals, not an audit of every product tool.
+
 ## Architecture
 
 ```text
@@ -116,7 +123,9 @@ Configure the inserted `agent-preset-recommender` row in a DSH patch:
 
 Defaults honor `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, `CODEBUDDY_CONFIG_DIR`, and `WORKBUDDY_CONFIG_DIR` when DSH starts. Supplying an explicit root list in the plugin configuration takes precedence over those defaults.
 
-Bounds are validated: file counts, file bytes, recency, and interval are finite. Missing/inaccessible roots are skipped. Startup, scheduled, and tool-triggered scans share one serialized queue and are aborted on plugin disposal.
+Bounds are validated: `intervalMinutes` is 0–35,791, `maxFilesPerSource` 1–100,000, `maxBytesPerFile` 1 KiB–64 MiB, and `recentDays` 1–3,650. Missing/inaccessible roots are skipped. Startup, scheduled, and tool-triggered scans share one serialized queue and are aborted on plugin disposal.
+
+Set both `scanOnStart: false` and `intervalMinutes: 0` to disable **automatic** scans; the model tool can still scan on demand. Before deleting the state directory to reset the report, stop the plugin: this also removes `identity.key`, intentionally rotating every keyed project ID.
 
 ## Model tools
 
@@ -144,7 +153,9 @@ Or retrieve one keyed project:
 { "project_id": "codex-0123456789abcdef" }
 ```
 
-Both tools return bounded readable text strings.
+Both tools return bounded readable text strings. Omitting `sources` or passing an empty list scans every source; a selected-source scan preserves the prior aggregate for unselected sources.
+
+Each persisted source report exposes `filesConsidered`, `truncatedFiles`, `skippedOld`, `skippedOversize`, `skippedLimit`, and `parseOrAccessErrors` alongside counts. Summary output lists at most 50 projects and is capped at 12,000 characters; query a `project_id` for its bounded detail.
 
 ## Limitations
 

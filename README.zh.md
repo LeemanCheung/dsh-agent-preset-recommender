@@ -35,6 +35,13 @@ dsh plugin --profile web add github:LeemanCheung/dsh-agent-preset-recommender
 
 每条建议都包含置信度与证据计数。规则完全确定且仅在本地运行，不会自动更改 DSH。
 
+### 精确的推荐与证据规则
+
+- 只要至少存在一个已识别的 session、workflow 或已分类工具调用，就推荐 `standard`；只有 metadata 文件或完全没有观察结果时推荐 `minimal`。
+- Codex/Claude Code 委派需要来自对应来源的已识别 session。workflows 需要 workflow 计数或 `workflow` 类工具调用；`web`、`MCP`、`LSP` 分别需要对应类别计数。
+- 无观察结果时置信度为 `0`；否则为 `min(0.95, 0.35 + 0.2 × log10(observations + 1))`，四舍五入到两位小数，其中 observations = sessions + workflows + 已分类工具调用。
+- 工具名先匹配精确的 delegation 别名，之后按固定的 **delegation → workflow → MCP → LSP → web → shell → search → files** 启发式顺序分类；首个匹配生效，未匹配为 `other`。它们是趋势证据，并非对全部产品工具的审计。
+
 ## 架构
 
 ```text
@@ -116,7 +123,9 @@ $DSH_HOME/state/agent-preset-recommender/report.json
 
 DSH 启动时默认会读取 `CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`CODEBUDDY_CONFIG_DIR`、`WORKBUDDY_CONFIG_DIR`。在插件配置中显式设置根目录列表会优先于这些默认值。
 
-文件数、单文件字节数、最近天数与间隔均受验证和限制。不存在或不可访问的根目录会跳过。启动、定时及工具触发扫描共用串行队列，并在插件卸载时取消。
+配置范围会被严格验证：`intervalMinutes` 为 0–35,791，`maxFilesPerSource` 为 1–100,000，`maxBytesPerFile` 为 1 KiB–64 MiB，`recentDays` 为 1–3,650。不存在或不可访问的根目录会跳过。启动、定时及工具触发扫描共用串行队列，并在插件卸载时取消。
+
+同时设为 `scanOnStart: false` 与 `intervalMinutes: 0` 可关闭**自动**扫描；模型工具仍可按需扫描。若要删除状态目录以重置报告，应先停止插件：这也会移除 `identity.key`，有意轮换全部密钥化项目 ID。
 
 ## 模型工具
 
@@ -144,7 +153,9 @@ DSH 启动时默认会读取 `CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`CODEBUDDY_CON
 { "project_id": "codex-0123456789abcdef" }
 ```
 
-两个工具都返回有界的可读文本字符串。
+两个工具都返回有界的可读文本字符串。省略 `sources` 或传空列表会扫描全部来源；只选择部分来源的扫描会保留未选来源此前的聚合结果。
+
+每个持久化来源报告会在计数之外暴露 `filesConsidered`、`truncatedFiles`、`skippedOld`、`skippedOversize`、`skippedLimit` 与 `parseOrAccessErrors`。汇总输出最多列出 50 个项目且不超过 12,000 个字符；可用 `project_id` 查询其有界详情。
 
 ## 限制
 
