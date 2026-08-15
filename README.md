@@ -6,6 +6,16 @@ English | [中文](README.zh.md)
 
 A persistent, host-side [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) bundle that privately summarizes local Codex, Claude Code, and WorkBuddy/CodeBuddy activity and recommends a built-in DSH agent preset. It is advisory only: there is no LLM call, installation, preset mutation, or network request.
 
+## Capability map
+
+| Area | What the plugin does | Deliberate boundary |
+| --- | --- | --- |
+| Local inventory | Boundedly scans supported session, project, and workflow metadata from Codex, Claude Code, CodeBuddy, and WorkBuddy. | Skips caches, builds, `.git`, symlinks, inaccessible roots, and unknown content. |
+| Privacy-preserving evidence | Aggregates tool, session, workflow, and day-level activity under installation-local HMAC project IDs. | Never persists prompts, replies, commands, arguments, raw events, paths, usernames, secrets, or file bodies. |
+| Deterministic advice | Maps observed evidence to `minimal`/`standard` capability presets plus optional delegation, workflow, web, MCP, and LSP capabilities. | Does not infer the `code` presentation variant, judge task quality, or alter a preset. |
+| Agent-facing access | Provides `scan_agent_projects` for a fresh bounded scan and `get_agent_preset_recommendations` for the saved report. | Both tools return bounded readable text; neither installs, enables, or authenticates anything. |
+| Durable local operation | Atomically persists a private report, supports startup and scheduled scans, and serializes all scan triggers. | No LLM call, network request, discovered-command execution, or background work survives plugin disposal. |
+
 ## Install
 
 ```sh

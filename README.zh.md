@@ -6,6 +6,16 @@
 
 一个持久化、Host 侧的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) bundle：以隐私安全方式汇总本地 Codex、Claude Code、WorkBuddy/CodeBuddy 活动，并推荐 DSH 内置 Agent preset。它只提供建议：不调用 LLM、不安装能力、不修改 preset、不发起网络请求。
 
+## 功能总览
+
+| 领域 | 插件实际能力 | 有意的边界 |
+| --- | --- | --- |
+| 本地清点 | 有界扫描 Codex、Claude Code、CodeBuddy 与 WorkBuddy 支持的会话、项目和工作流元数据。 | 跳过缓存、构建产物、`.git`、符号链接、不可访问根目录和未知正文。 |
+| 隐私安全证据 | 用本机 HMAC 派生的项目 ID 聚合工具、会话、工作流和天级活动。 | 绝不持久化 prompt、回复、命令、参数、原始事件、路径、用户名、secret 或文件正文。 |
+| 确定性建议 | 将观察证据映射为 `minimal`/`standard` 能力 preset，以及可选的委派、workflow、web、MCP 与 LSP 能力。 | 不推断 `code` 展示变体、不评价任务质量，也不改写 preset。 |
+| Agent 可调用入口 | `scan_agent_projects` 执行一次新的有界扫描；`get_agent_preset_recommendations` 读取已保存报告。 | 两个工具只返回有界文本；不会安装、启用或认证任何能力。 |
+| 持久化本地运行 | 原子保存私有报告，支持启动和定时扫描，并将所有扫描触发串行化。 | 不调用 LLM、不联网、不执行发现到的命令；插件卸载后不保留后台任务。 |
+
 ## 安装
 
 ```sh
