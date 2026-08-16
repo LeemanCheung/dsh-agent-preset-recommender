@@ -6,6 +6,14 @@
 
 一个持久化、Host 侧的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) bundle：以隐私安全方式汇总本地 Codex、Claude Code、WorkBuddy/CodeBuddy 活动，并推荐 DSH 内置 Agent preset。它只提供建议：不调用 LLM、不安装能力、不修改 preset、不发起网络请求。
 
+## 预览
+
+![DSH 中的合成聚合推荐总览](docs/screenshot.png)
+
+![DSH 中的合成聚合项目详情](docs/project-detail.png)
+
+> 这些预览使用合成的聚合测试数据，仅展示有界工具结果；不包含用户会话、路径、提示词、命令或 secret。
+
 ## 功能总览
 
 | 领域 | 插件实际能力 | 有意的边界 |

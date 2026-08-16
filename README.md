@@ -6,6 +6,14 @@ English | [中文](README.zh.md)
 
 A persistent, host-side [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) bundle that privately summarizes local Codex, Claude Code, and WorkBuddy/CodeBuddy activity and recommends a built-in DSH agent preset. It is advisory only: there is no LLM call, installation, preset mutation, or network request.
 
+## Preview
+
+![Synthetic aggregate recommendation overview in DeepSeek Harness](docs/screenshot.png)
+
+![Synthetic aggregate project detail in DeepSeek Harness](docs/project-detail.png)
+
+> These previews use synthetic aggregate fixture data. They illustrate the bounded tool results only; no user sessions, paths, prompts, commands, or secrets appear.
+
 ## Capability map
 
 | Area | What the plugin does | Deliberate boundary |

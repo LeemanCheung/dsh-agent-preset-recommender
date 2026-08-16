@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title description">
+  <title id="title">dsh-agent-preset-recommender report in DeepSeek Harness</title>
+  <desc id="description">A DeepSeek Harness conversation showing a completed local scan and its privacy-safe agent-preset recommendation, using synthetic aggregate data.</desc>
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#f7f9fd"/>
+      <stop offset="1" stop-color="#eef2f8"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#4b7dff"/>
+      <stop offset="1" stop-color="#8066f6"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="22" flood-color="#24304c" flood-opacity=".14"/>
+    </filter>
+    <style>
+      text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; }
+      .muted { fill: #73809a; }
+      .body { fill: #25324a; }
+      .label { fill: #596780; font-size: 14px; }
+      .code { fill: #26334c; font: 15px ui-monospace, SFMono-Regular, Consolas, monospace; }
+    </style>
+  </defs>
+
+  <rect width="1440" height="900" fill="url(#page)"/>
+  <rect x="0" y="0" width="274" height="900" fill="#ffffff"/>
+  <rect x="273" y="0" width="1" height="900" fill="#dce3ef"/>
+
+  <g transform="translate(28 30)">
+    <rect width="218" height="52" rx="15" fill="#f0f4fb"/>
+    <rect x="12" y="10" width="32" height="32" rx="11" fill="url(#accent)"/>
+    <path d="M21 26h14M28 19v14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="56" y="31" class="body" font-size="16" font-weight="700">DeepSeek Harness</text>
+  </g>
+
+  <g transform="translate(22 120)">
+    <text x="12" y="0" class="muted" font-size="12" font-weight="700" letter-spacing="1.2">WORKSPACE</text>
+    <rect x="0" y="20" width="230" height="44" rx="12" fill="#eef3ff"/>
+    <circle cx="22" cy="42" r="9" fill="#5c7dfa"/>
+    <path d="M18 42h8M22 38v8" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="42" y="47" class="body" font-size="15" font-weight="650">Plugin verification</text>
+
+    <text x="12" y="108" class="muted" font-size="12" font-weight="700" letter-spacing="1.2">RECENT</text>
+    <rect x="0" y="126" width="230" height="50" rx="12" fill="#ffffff"/>
+    <circle cx="22" cy="151" r="10" fill="#edf0f6"/>
+    <path d="M18 151h8M22 147v8" stroke="#78859b" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="42" y="147" class="body" font-size="14" font-weight="650">Local metadata review</text>
+    <text x="42" y="165" class="muted" font-size="12">Synthetic fixture session</text>
+
+    <rect x="0" y="190" width="230" height="50" rx="12" fill="#ffffff"/>
+    <circle cx="22" cy="215" r="10" fill="#edf0f6"/>
+    <path d="M18 215h8M22 211v8" stroke="#78859b" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="42" y="211" class="body" font-size="14" font-weight="650">Preset recommendations</text>
+    <text x="42" y="229" class="muted" font-size="12">Saved local report</text>
+  </g>
+
+  <g transform="translate(22 804)">
+    <rect width="230" height="54" rx="14" fill="#f6f8fc"/>
+    <circle cx="26" cy="27" r="14" fill="#dfe7ff"/>
+    <path d="M21 27h10M26 22v10" stroke="#5c76dd" stroke-width="1.7" stroke-linecap="round"/>
+    <text x="50" y="24" class="body" font-size="14" font-weight="700">Local-first tools</text>
+    <text x="50" y="42" class="muted" font-size="12">No network access</text>
+  </g>
+
+  <g transform="translate(316 30)">
+    <text class="body" font-size="22" font-weight="750">Agent preset recommendation</text>
+    <text y="28" class="muted" font-size="14">A bounded local scan with no content retention</text>
+    <g transform="translate(922 1)">
+      <rect width="144" height="34" rx="17" fill="#eaf7ef"/>
+      <circle cx="22" cy="17" r="5" fill="#37a467"/>
+      <text x="36" y="22" fill="#247749" font-size="13" font-weight="700">Scan complete</text>
+    </g>
+  </g>
+  <line x1="316" x2="1404" y1="82" y2="82" stroke="#dfe5f0"/>
+
+  <g transform="translate(364 118)">
+    <text x="0" y="0" class="muted" font-size="13" font-weight="700" letter-spacing=".9">YOU</text>
+    <rect x="0" y="18" width="620" height="76" rx="18" fill="#ffffff" filter="url(#shadow)"/>
+    <text x="24" y="50" class="body" font-size="17" font-weight="600">Scan my local agent metadata and recommend a DSH preset.</text>
+    <text x="24" y="74" class="muted" font-size="13">Only report aggregated evidence; do not change anything.</text>
+  </g>
+
+  <g transform="translate(364 244)">
+    <circle cx="20" cy="20" r="20" fill="url(#accent)"/>
+    <path d="M11 20h18M20 11v18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+    <text x="54" y="16" class="body" font-size="16" font-weight="750">Assistant</text>
+    <text x="54" y="38" class="muted" font-size="13">Completed a fresh, privacy-safe local scan.</text>
+
+    <rect x="0" y="60" width="990" height="414" rx="20" fill="#ffffff" stroke="#dfe6f1" filter="url(#shadow)"/>
+    <rect x="0" y="60" width="990" height="58" rx="20" fill="#f8faff"/>
+    <rect x="0" y="96" width="990" height="22" fill="#f8faff"/>
+    <circle cx="28" cy="89" r="14" fill="#e5ecff"/>
+    <path d="M23 89h10M28 84v10" stroke="#526fd9" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="54" y="85" class="body" font-size="15" font-weight="750">scan_agent_projects</text>
+    <text x="54" y="105" class="muted" font-size="12.5">Fresh local metadata scan · completed</text>
+    <rect x="820" y="75" width="136" height="29" rx="14.5" fill="#e9f8ef"/>
+    <circle cx="840" cy="89.5" r="4" fill="#36a265"/>
+    <text x="851" y="94" fill="#247749" font-size="12" font-weight="700">Privacy-safe</text>
+
+    <g transform="translate(30 145)">
+      <rect width="930" height="76" rx="15" fill="#f3f7ff"/>
+      <text x="24" y="30" fill="#314a91" font-size="14" font-weight="750">Preset recommendation</text>
+      <text x="24" y="55" class="body" font-size="21" font-weight="760">standard</text>
+      <text x="144" y="54" class="muted" font-size="14">Confidence 0.71</text>
+      <rect x="614" y="21" width="128" height="34" rx="17" fill="#e2ebff"/>
+      <text x="638" y="43" fill="#3c5fc8" font-size="13" font-weight="750">Advisory only</text>
+      <rect x="752" y="21" width="148" height="34" rx="17" fill="#edf6ef"/>
+      <text x="775" y="43" fill="#317a4f" font-size="13" font-weight="750">No changes made</text>
+
+      <text x="0" y="112" class="muted" font-size="12" font-weight="750" letter-spacing="1">AGGREGATE EVIDENCE</text>
+      <text x="0" y="144" class="code">codex: 2 sessions, 1 workflow, 1 project</text>
+      <text x="0" y="170" class="code">claude: 1 session, 0 workflows, 1 project</text>
+      <text x="0" y="196" class="code">workbuddy: 1 session, 1 workflow, 1 project</text>
+
+      <line x1="0" x2="930" y1="218" y2="218" stroke="#e1e7f1"/>
+      <text x="0" y="250" class="muted" font-size="12" font-weight="750" letter-spacing="1">OPTIONAL CAPABILITIES</text>
+      <g transform="translate(0 266)">
+        <rect width="159" height="34" rx="17" fill="#f1f4fb"/>
+        <text x="18" y="22" class="body" font-size="13" font-weight="650">Codex delegation</text>
+        <rect x="172" width="104" height="34" rx="17" fill="#f1f4fb"/>
+        <text x="193" y="22" class="body" font-size="13" font-weight="650">Workflows</text>
+        <rect x="289" width="70" height="34" rx="17" fill="#f1f4fb"/>
+        <text x="311" y="22" class="body" font-size="13" font-weight="650">Web</text>
+        <rect x="372" width="67" height="34" rx="17" fill="#f1f4fb"/>
+        <text x="394" y="22" class="body" font-size="13" font-weight="650">LSP</text>
+      </g>
+
+      <rect x="0" y="322" width="930" height="48" rx="12" fill="#fbfcfe" stroke="#e5eaf3"/>
+      <circle cx="22" cy="346" r="8" fill="#dce8ff"/>
+      <path d="M22 342v8M18 346h8" stroke="#5474d7" stroke-width="1.4" stroke-linecap="round"/>
+      <text x="42" y="350" class="label">Aggregate metadata only — no prompts, replies, commands, arguments, paths, usernames, or secrets are stored.</text>
+    </g>
+  </g>
+
+  <g transform="translate(364 768)">
+    <rect width="990" height="78" rx="19" fill="#ffffff" stroke="#dfe6f1"/>
+    <text x="25" y="31" class="muted" font-size="13">Ask a follow-up or request the persisted report…</text>
+    <circle cx="918" cy="39" r="22" fill="url(#accent)"/>
+    <path d="M909 39h18M918 30v18" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+
+  <rect x="1124" y="846" width="246" height="28" rx="14" fill="#e8eef9"/>
+  <text x="1140" y="865" fill="#60708d" font-size="12.5" font-weight="650">Synthetic aggregate preview</text>
+</svg>
